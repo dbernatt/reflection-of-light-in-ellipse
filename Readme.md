@@ -1,0 +1,1 @@
+Reflection of light in ellipse
