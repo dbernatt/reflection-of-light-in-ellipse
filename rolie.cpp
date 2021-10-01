@@ -14,19 +14,16 @@ using namespace sf;
 const double width = 1080;
 const double height = 720;
 const int focusPointSize = 3;
+const int startingPointSize = 5;
 const float mspeed = 10;
 const double epsz = 3;
-int numberOfReflections = 30;
+int numberOfReflections = 1;
 const unsigned short quality = (3 * (height + width) - sqrt((3 * height + width) * (height + 3 * width)));
 double ra = width / 2;
 double rb = height / 2;
 double c = sqrt((ra * ra) - (rb * rb));
-const double f1x = -c;
-const double f1y = 0;
-const double f2x = c;
-const double f2y = 0;
 
-struct pont
+struct point
 {
 	float x;
 	float y;
@@ -60,7 +57,7 @@ void reflection(double xkp, double ykp, double xi, double yi, double &x_metsz, d
 	// y_metsz = yp;
 	// cout << "x_p = " << xp << endl;
 	// cout << "y_p = " << yp << endl;
-	// kezdopont szimetrikusa
+	// kezdopoint szimetrikusa
 	// double xkp_szim = 2*xp - xkp;
 	// double ykp_szim = 2*yp - ykp;
 	// x_metsz = xkp_szim;
@@ -100,8 +97,6 @@ void print_usage()
 	cout << "A = " << ra << endl;
 	cout << "B = " << rb << endl;
 	cout << "C = " << c << endl;
-	cout << "First focus point : (" << -f1x << ", " << f1y << ")" << endl;
-	cout << "Second focus point : (" << f2x << ", " << f2y << ")" << endl;
 	cout << endl;
 	cout << "Commands:" << endl;
 	cout << "-> Left : Move left" << endl;
@@ -110,9 +105,13 @@ void print_usage()
 	cout << "-> Down: Move down" << endl;
 	cout << "-> Z: Zoom in" << endl;
 	cout << "-> X: Zoom out" << endl;
-	cout << "-> P / Space: Pause/Resume reflections" << endl;
-	cout << "-> A: Increase number of reflections" << endl;
-	cout << "-> S: Decrease number of reflections" << endl;
+	cout << "-> Space: Pause/Resume reflections" << endl;
+	cout << "-> C: Increase number of reflections" << endl;
+	cout << "-> V: Decrease number of reflections" << endl;
+	cout << "-> A: Move starting point to negative X direction" << endl;
+	cout << "-> S: Move starting point to positive X direction" << endl;
+	cout << "-> Q: Move starting point to negative Y direction" << endl;
+	cout << "-> W: Move starting point to positive Y direction" << endl;
 	cout << "-> Esc: Close simulation" << endl;
 }
 
@@ -122,6 +121,8 @@ int main()
 	srand(time(NULL));
 
 	RenderWindow window(VideoMode(width, height), "Reflection of light in Ellipse");
+	window.setFramerateLimit(60);
+	// window.setKeyRepeatEnabled(false);
 
 	View view = window.getView();
 	view.setCenter(0, 0);
@@ -129,9 +130,19 @@ int main()
 
 	CircleShape degrees_1(focusPointSize);
 	CircleShape degrees_2(focusPointSize);
+	CircleShape starting_point(startingPointSize);
 
-	degrees_1.setFillColor(Color(255, 0, 0));
-	degrees_2.setFillColor(Color(255, 0, 0));
+	degrees_1.setFillColor(Color::Green);
+	degrees_2.setFillColor(Color::Green);
+	starting_point.setFillColor(Color::Magenta);
+
+	double f1x = -c;
+	double f1y = 0;
+	double f2x = c;
+	double f2y = 0;
+
+	degrees_1.setPosition(f1x - focusPointSize, f1y - focusPointSize);
+	degrees_2.setPosition(f2x - focusPointSize, f2y - focusPointSize);
 
 	///////////////////////////////////////////////////
 	// Drawing ellipse //
@@ -140,15 +151,16 @@ int main()
 	double rad;
 	double x;
 	double y;
-	pont *points = new pont[quality];
-	Color lightColor(255, 224, 102, 255);
+	cout << quality << endl;
+	point *points = new point[quality];
+	// Color lightColor(255, 224, 102, 255);
+	Color lightColor(Color::Red);
 
 	ConvexShape ellipse;
 	ellipse.setPointCount(quality);
 
 	for (unsigned short i = 0; i < quality; ++i)
 	{
-
 		rad = (i * 2 * PI) / quality;
 		x = cos(rad) * ra;
 		y = sin(rad) * rb;
@@ -157,7 +169,7 @@ int main()
 		ellipse.setPoint(i, Vector2f(x, y));
 	}
 	ellipse.setFillColor(Color::Transparent);
-	ellipse.setOutlineColor(Color::Green);
+	ellipse.setOutlineColor(Color::White);
 	ellipse.setOutlineThickness(1);
 	ellipse.setPosition(0, 0);
 
@@ -180,17 +192,21 @@ int main()
 	double yi = points[0].y;
 	double xkp = f1x;
 	double ykp = f1y;
+
+	starting_point.setPosition(xkp - startingPointSize, ykp - startingPointSize);
+
+	///////////////////////////
+
 	vector<double> v;
-	int pause = 1;
+	bool pause = false;
+	bool Space_pressed = false;
+	bool Space_released = false;
+	double new_xkp = xkp;
+	double new_ykp = ykp;
 
 	/////////////////////////////////////////////////////
 
-	// CircleShape szim(6);
-	// szim.setPosition(x_metsz, -y_metsz);
-	// szim.setFillColor(Color(255,0,0));
-
 	print_usage();
-	window.setFramerateLimit(60);
 
 	int it = 0;
 	while (window.isOpen())
@@ -199,88 +215,103 @@ int main()
 
 		while (window.pollEvent(event))
 		{
-			if (event.type == sf::Event::Closed)
-				window.close();
-			if (event.key.code == sf::Keyboard::Escape)
-				window.close();
 
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+			switch (event.type)
 			{
-				view.move(mspeed, 0);
-				window.setView(view);
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-			{
-				view.move(-mspeed, 0);
-				window.setView(view);
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
-			{
-				view.move(0, mspeed);
-				window.setView(view);
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
-			{
-				view.move(0, -mspeed);
-				window.setView(view);
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-			{
-				numberOfReflections++;
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-			{
-				numberOfReflections--;
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Z))
-			{
-				view.zoom(0.98f);
-				window.setView(view);
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::X))
-			{
-				view.zoom(1.02f);
-				window.setView(view);
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::P))
-			{
-				pause = -1;
-			}
-			else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-			{
-				pause = 1;
+			case sf::Event::Closed:
+				window.close();
+				break;
+			case sf::Event::KeyPressed:
+				switch (event.key.code)
+				{
+				case Keyboard::Escape:
+					window.close();
+					break;
+				case Keyboard::Left:
+					view.move(-mspeed, 0);
+					window.setView(view);
+					break;
+				case Keyboard::Right:
+					view.move(mspeed, 0);
+					window.setView(view);
+					break;
+				case Keyboard::Up:
+					view.move(0, mspeed);
+					window.setView(view);
+					break;
+				case Keyboard::Down:
+					view.move(0, -mspeed);
+					window.setView(view);
+					break;
+				case Keyboard::Z:
+					view.zoom(0.98f);
+					window.setView(view);
+					break;
+				case Keyboard::X:
+					view.zoom(1.02f);
+					window.setView(view);
+					break;
+				case Keyboard::C:
+					if (numberOfReflections < 100)
+						numberOfReflections++;
+					break;
+				case Keyboard::V:
+					if (numberOfReflections > 0)
+						numberOfReflections--;
+					break;
+				case Keyboard::A:
+					new_xkp--;
+					break;
+				case Keyboard::S:
+					new_xkp++;
+					break;
+				case Keyboard::Q:
+					new_ykp--;
+					break;
+				case Keyboard::W:
+					new_ykp++;
+					break;
+				case Keyboard::Space:
+					Space_pressed = true;
+				default:
+					break;
+				}
+
+			case sf::Event::KeyReleased:
+				switch (event.key.code)
+				{
+				case sf::Keyboard::Space:
+					if (Space_pressed)
+					{
+						pause = !pause;
+						Space_pressed = false;
+					}
+					break;
+				default:
+					break;
+				}
+				break;
+			default:
+				break;
 			}
 		}
 
-		// Vertex ox[] = {
-		// 	Vertex(sf::Vector2f(-width, 0),Color::Red),
-		// 	Vertex(sf::Vector2f(width, 0),Color::Red)
-		// };
-
-		// Vertex oy[] = {
-		// 	Vertex(sf::Vector2f(0, -height),Color::Red),
-		// 	Vertex(sf::Vector2f(0, height),Color::Red)
-		// };
-
-		degrees_1.setPosition(f1x - focusPointSize, f1y - focusPointSize);
-		degrees_2.setPosition(f2x - focusPointSize, f2y - focusPointSize);
-
-		if (pause == 1)
+		if (!pause)
 		{
 			if (it < quality)
 			{
 				window.clear();
 
+				yi = points[it].y;
+				xi = points[it].x;
+				xkp = new_xkp;
+				ykp = new_ykp;
+				starting_point.setPosition(xkp - startingPointSize, ykp - startingPointSize);
+
 				window.draw(ellipse);
 				window.draw(degrees_1);
 				window.draw(degrees_2);
-				// window.draw(ox, 2, sf::Lines);
-				// window.draw(oy, 2, sf::Lines);
-
-				xi = points[it].x;
-				yi = points[it].y;
-				xkp = f1x;
-				ykp = f1y;
+				window.draw(starting_point);
 
 				reflection(xkp, ykp, xi, yi, x_metsz, y_metsz);
 				v.push_back(xkp);
@@ -295,7 +326,7 @@ int main()
 					Vertex(sf::Vector2f(v[2], -v[3]), lightColor)};
 				window.draw(first, 2, sf::Lines);
 
-				for (int j = 0; j < numberOfReflections; j++)
+				for (int j = 1; j < numberOfReflections; j++)
 				{
 					xkp = xi;
 					ykp = yi;
