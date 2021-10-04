@@ -4,7 +4,7 @@
 
 The Reflective property of an ellipse is simply this: when a ray leaves one of the foci and meets a point on that ellipse, it will reflect off of the ellipse and pass through the other focus.
 
-## Setup
+## Usage
 
 0.  ```
     $ sudo apt-get install libsfml-dev
