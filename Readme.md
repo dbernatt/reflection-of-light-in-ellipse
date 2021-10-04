@@ -6,6 +6,10 @@ The Reflective property of an ellipse is simply this: when a ray leaves one of t
 
 ## Setup
 
+0.  ```
+    $ sudo apt-get install libsfml-dev
+    ```
+
 1.  ```
     $ make
     ```
